@@ -28,7 +28,7 @@ public static class Program
 
         var code = new TypeScriptClientGenerator(document, generatorSettings).GenerateFile();
 
-        File.WriteAllText(@"..\..\..\frontend\src\api\generated.ts", code);
+        File.WriteAllText(@"..\..\frontend\src\api\generated.ts", code);
     }
 }
 

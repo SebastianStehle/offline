@@ -5,4 +5,6 @@ node_modules
 .vs
 .vscode
 
+*.user
+
 appsettings.Development.json
