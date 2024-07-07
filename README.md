@@ -1,8 +1,8 @@
 # Offline Sync
 
-This repository demonstrates offline behavior using event sourcing.
+This repository demonstrates offline behavior using event sourcing. the repository demonstrates architectural principles, the tech stack does not matter.
 
-We assume that the backend is only a proxy for an actual backend and deals with offline behavior and to transform requests between the 
+We assume that the backend is only a proxy for an actual backend and deals with offline behavior and to transform requests between the frontend and backend.
 
 ## Behavior 
 This is how it works in short on the frontend and proxy:
