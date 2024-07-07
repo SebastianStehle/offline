@@ -4,7 +4,7 @@ import { EventBase, EventsClient, TodoCompleted, TodoCreated, TodoDeleted, TodoU
 export * from './generated';
 
 const CONFIGURATION = {
-  basePath: 'https://localhost:7041'
+  basePath: 'http://localhost:5005'
 };
 
 export function isTodoCreated(source: EventBase): source is TodoCreated {

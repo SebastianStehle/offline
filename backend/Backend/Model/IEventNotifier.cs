@@ -5,6 +5,6 @@ namespace Backend.Model
     {
         void Notify();
 
-        IDisposable SubscribeAsync(Action action);
+        ValueTask<IAsyncDisposable> SubscribeAsync(Action action);
     }
 }

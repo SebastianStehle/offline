@@ -1,4 +1,5 @@
 import { TodoDto } from "../api";
+import { addOrReplaceById, removeById } from "./utils";
 
 export class TodoStore {
   async getTodos(): Promise<TodoDto[]> {
@@ -12,25 +13,17 @@ export class TodoStore {
   }
 
   async upsert(todo: TodoDto) {
-    const stored = await this.loadTodos();
+    let stored = await this.loadTodos();
 
-    const indexOfExisting = stored.findIndex(x => x.id === todo.id);
-
-    if (indexOfExisting >= 0) {
-      stored[indexOfExisting] = todo;
-    } else {
-      stored.push(todo);
-    }
+    stored = addOrReplaceById(stored, todo);
 
     await this.storeTodos(stored);
   }
 
   async remove(id: string) {
-    const stored = await this.loadTodos();
+    let stored = await this.loadTodos();
 
-    if (stored.splice(stored.findIndex(x => x.id !== id), 1).length === 0) {
-      return;
-    }
+    stored = removeById(stored, id);
     
     await this.storeTodos(stored);
   }

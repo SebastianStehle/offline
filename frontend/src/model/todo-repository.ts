@@ -1,10 +1,10 @@
-import { ApiClient, TodoDto, isTodoCreated } from "../api";
+import { ApiClient, TodoDto, isTodoCreated, isTodoDeleted } from "../api";
 import { EventBus } from "./event-bus";
 import { Subscriptions } from "./subscriptions";
 import { Update } from "./sync-model";
 import { Todo } from "./todo";
 import { TodoStore } from "./todo-store";
-import { guid } from "./utils";
+import { addOrReplaceById, guid, removeById } from "./utils";
 
 export class TodoRepository {
   private readonly user = guid();
@@ -28,6 +28,11 @@ export class TodoRepository {
 
       const id = event.metadata.objectId;
 
+      if (isTodoDeleted(event)) {
+        this.deleteCore(id);
+        return;
+      }
+
       let todo: Todo | undefined;
       if (isTodoCreated(event)) {
         todo = new Todo(id);
@@ -41,7 +46,7 @@ export class TodoRepository {
         return;
       }
     
-      await this.upsert(update.newValue);
+      await this.upsertCore(update.newValue);
     });
   }
 
@@ -58,9 +63,9 @@ export class TodoRepository {
       }
 
       this.todos = dtos.map(x => {
-        const { id, isCompleted, isDeleted, title } = x;
+        const { id, ...values } = x;
 
-        return new Todo(id, { isCompleted, isDeleted, title });
+        return new Todo(id, values);
       });
 
       return this.todos;
@@ -71,29 +76,24 @@ export class TodoRepository {
   }
 
   async createTodo(title: string) {
-    await this.load();
-
-    const update = new Todo(guid()).create(title, this.user);
-
-    await this.upsert(update.newValue);
-    
-    this.eventBus.publish(update.event);
+    return this.updateTodo(guid(), true, todo => todo.create(title, this.user));
   }
 
   async renameTodo(id: string, title: string) {
-    return this.updateTodo(id, todo => todo.rename(title, this.user));
+    return this.updateTodo(id, false, todo => todo.rename(title, this.user));
   }
 
   async completeTodo(id: string) {
-    return this.updateTodo(id, todo => todo.complete(this.user));
+    return this.updateTodo(id, false, todo => todo.complete(this.user));
   }
 
   async deleteTodo(id: string) {
     await this.load();
-
+  
     const todo = this.todos.find(x => x.id === id);
-    if (!todo || todo.isDeleted) {
-      return;
+
+    if (!todo) {
+      throw new Error(`Cannot find todo with ID '${id}'.`);
     }
 
     const update = todo.delete(this.user);
@@ -106,22 +106,22 @@ export class TodoRepository {
       throw new Error(`Conflict for todo '${id}'.`);
     }
 
-    await this.upsert(update.newValue);
-    
+    await this.deleteCore(id);
+
     this.eventBus.publish(update.event);
   }
 
-  private async updateTodo(id: string, updater: (todo: Todo) => (Update<Todo> | 'NoChange')) {
+  private async updateTodo(id: string, create: boolean, updater: (todo: Todo) => (Update<Todo> | 'NoChange')) {
     await this.load();
   
-    const todo = this.todos.find(x => x.id === id);
+    let todo = this.todos.find(x => x.id === id);
+
+    if (!todo && create) {
+      todo = new Todo(id);
+    }
 
     if (!todo) {
       throw new Error(`Cannot find todo with ID '${id}'.`);
-    }
-
-    if (todo.isDeleted) {
-      throw new Error(`Conflict for todo '${id}'. Todo has been deleted.`);
     }
 
     const update = updater(todo);
@@ -134,19 +134,22 @@ export class TodoRepository {
       throw new Error(`Conflict for todo '${id}'.`);
     }
 
-    await this.upsert(update.newValue);
+    await this.upsertCore(update.newValue);
 
     this.eventBus.publish(update.event);
   }
 
-  private async upsert(todo: Todo) {
-    if (this.todos.find(x => x.id === todo.id)) {
-      this.todos = this.todos.map(x => x.id === todo.id ? todo : x);
-    } else {
-      this.todos = [...this.todos, todo];
-    }
+  private async upsertCore(todo: Todo) {
+    this.todos = addOrReplaceById(this.todos, todo);
 
     await this.todoStore.upsert({ id: todo.id, ...todo.values });
+    this.changes.publish();
+  }
+
+  private async deleteCore(id: string) {
+    this.todos = removeById(this.todos, id);
+
+    await this.todoStore.remove(id);
     this.changes.publish();
   }
 }

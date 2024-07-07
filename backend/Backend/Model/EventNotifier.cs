@@ -4,7 +4,7 @@ public sealed class EventNotifier : IEventNotifier
 {
     private readonly HashSet<Subscription> subscriptions = [];
 
-    public class Subscription(EventNotifier notifier, Action action) : IDisposable
+    public class Subscription(EventNotifier notifier, Action action) : IAsyncDisposable
     {
         private readonly EventNotifier notifier = notifier;
 
@@ -13,9 +13,10 @@ public sealed class EventNotifier : IEventNotifier
             action();
         }
 
-        public void Dispose()
+        public ValueTask DisposeAsync()
         {
             notifier.subscriptions.Remove(this);
+            return default;
         }
     }
 
@@ -27,11 +28,11 @@ public sealed class EventNotifier : IEventNotifier
         }
     }
 
-    public IDisposable SubscribeAsync(Action action)
+    public ValueTask<IAsyncDisposable> SubscribeAsync(Action action)
     {
         var subscription = new Subscription(this, action);
 
         subscriptions.Add(subscription);
-        return subscription;
+        return new ValueTask<IAsyncDisposable>(subscription);
     }
 }

@@ -24,8 +24,8 @@ export function AddTodo(props: AddTodoProps) {
   return (
     <div>
       <form className="flex flex-column gap-4" onSubmit={doSubmit}>
-        <div className="flex-grow">
-          <input type="text" placeholder="Todo" className="input input-bordered w-full flex-grow"
+        <div className="grow">
+          <input type="text" placeholder="Todo" className="input input-bordered w-full"
             value={title} onChange={doSetTitle} />
         </div>
   
